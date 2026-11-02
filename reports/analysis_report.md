@@ -168,7 +168,7 @@ The following results were obtained at the default classification threshold of 0
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC | Average Precision |
 |---|---:|---:|---:|---:|---:|---:|
 | Logistic Regression | 0.917 | 0.366 | 0.886 | 0.518 | 0.968 | 0.774 |
-| Random Forest | 0.965 | 0.727 | 0.662 | 0.693 | 0.958 | 0.758 |
+| Random Forest | 0.970 | 0.727 | 0.662 | 0.693 | 0.958 | 0.758 |
 
 Logistic Regression also achieves a balanced accuracy of 0.903.
 
