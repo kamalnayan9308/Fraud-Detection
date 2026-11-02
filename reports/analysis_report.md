@@ -143,7 +143,6 @@ The raw timestamp is transformed into:
 - Weekend indicator
 - Sine and cosine encodings of hour of day
 
-Registration duration is log-transformed to reduce skewness.
 
 The preprocessing pipeline includes:
 
@@ -160,8 +159,6 @@ The test set is held out from model fitting and preprocessing. Logistic Regressi
 ### 3.2 Model training and results
 
 I trained two supervised classification models: Logistic Regression and Random Forest.
-
-The following results were obtained at the default classification threshold of 0.5:
 
 The following results were obtained at the default classification threshold of 0.5:
 
