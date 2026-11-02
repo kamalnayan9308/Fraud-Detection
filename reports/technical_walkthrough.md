@@ -159,5 +159,3 @@ The model comparison demonstrates that there is a trade-off between identifying 
 
 The supplied data contains a large, concentrated event on 11 January. A random stratified split distributes records from that event across training and test sets. Because event-specific signals may be learned from training examples, the test metrics may overestimate performance on a genuinely later period. The random split is reproducible and useful as a first baseline, but it is not a substitute for temporal validation. With more data, reserve the latest period as an untouched test set and train on earlier dates. Ideally validate on later months, markets or acquisition channels.
 
-tor drift and model performance after deployment?
-10. What privacy, fairness and human-review controls are required before acting on model scores?
