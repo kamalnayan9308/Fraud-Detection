@@ -126,7 +126,15 @@ The current implementation demonstrates this approach using registration volume 
 
 ### 3.1 Preprocessing and feature engineering
 
-The modeling dataset excludes `user_id` because it is a unique identifier and has no defensible generalizable meaning.
+The modeling dataset excludes `user_id` because it is a unique identifier and has no defensible generalizable meaning. The raw `registration_timestamp` is excluded from the model after extracting relevant time-based features.
+
+The final modelling dataset contains 15 features before categorical encoding:
+
+- **Categorical and demographic:** `email_domain`, `gender`, `job_title`, `education_level`, `os`, `device_type`
+- **Numerical and behavioural:** `age`, `is_smoker`, `is_drinker`, `log_registration_duration`
+- **Time-derived:** `registration_hour`, `registration_day_of_week`, `is_weekend`, `hour_sin`, `hour_cos`
+
+Registration duration is log-transformed to reduce skewness. Hour of day is also represented using sine and cosine transformations to capture its cyclical nature.
 
 The raw timestamp is transformed into:
 
@@ -155,10 +163,14 @@ I trained two supervised classification models: Logistic Regression and Random F
 
 The following results were obtained at the default classification threshold of 0.5:
 
+The following results were obtained at the default classification threshold of 0.5:
+
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC | Average Precision |
 |---|---:|---:|---:|---:|---:|---:|
 | Logistic Regression | 0.917 | 0.366 | 0.886 | 0.518 | 0.968 | 0.774 |
 | Random Forest | 0.965 | 0.727 | 0.662 | 0.693 | 0.958 | 0.758 |
+
+Logistic Regression also achieves a balanced accuracy of 0.903.
 
 Accuracy is included for completeness, but it is not used as the primary selection metric because the dataset is imbalanced. A model predicting every registration as legitimate would achieve 95% accuracy while failing to identify any fraud.
 
