@@ -1,4 +1,4 @@
-# Technical walkthrough and interview preparation
+# Technical walkthrough
 
 This note explains the reasoning behind the implementation. It is intended to help the author understand, validate and present the work rather than merely execute it.
 
@@ -15,13 +15,23 @@ This note explains the reasoning behind the implementation. It is intended to he
 
 ### Daily and hourly aggregation
 
+I first aggregated registrations by day and hour to understand the registration pattern and identify unusual activity.
+
 For each time bucket, the analysis calculates:
 
-- registration count: number of users in the bucket;
-- fraudulent count: sum of the binary `is_fraud` indicator;
-- fraud rate: fraudulent count divided by registration count.
+- Registration count: number of users in the bucket.
+- Fraudulent count: sum of the binary `is_fraud` indicator.
+- Fraud rate: fraudulent count divided by registration count.
 
-The label is available in this retrospective dataset, so it is valid to use it to identify which historical period actually contained the fraud concentration. It would not be available in the label-free live-monitoring scenario.
+The supplied dataset contains historical fraud labels. However, the candidate event is selected using registration volume rather than the fraud labels. The labels are examined afterwards to investigate whether the selected period contains a high concentration of known fraudulent registrations.
+
+The day with the highest registration volume was 11 January 2025, with 2,128 registrations, including 574 fraud-labelled registrations (26.97%).
+
+A rolling three-hour registration total is then calculated across the hourly time series. The three-hour window with the highest combined registration volume is selected as the candidate event.
+
+The selected window is 11 January 2025, 01:00–03:59 (end-exclusive timestamp: 04:00). It contains 728 registrations, of which 514 are fraud-labelled, giving a retrospective fraud rate of 70.60%.
+
+This approach separates anomaly identification from historical fraud investigation. A high-volume period is not automatically fraudulent; the historical labels provide evidence about the nature of the selected event.
 
 ### Volume Z-score
 
@@ -29,35 +39,56 @@ The script estimates a baseline mean and sample standard deviation from non-empt
 
 `Z = (observed hourly count - baseline mean) / baseline standard deviation`.
 
-The three candidate hours have very large positive scores (approximately 21.37, 21.86 and 19.69). These scores show that volume is far from the estimated baseline. They should not be interpreted as exact tail probabilities: hourly observations may not be independent or normally distributed, and time-of-day effects should be modeled in production.
+The three candidate hours have very large positive scores (approximately 21.37, 21.86 and 19.69). These scores show that registration volume is far above the estimated baseline. The candidate window has an average hourly volume of 242.67, compared with a baseline mean of 68.72.
+
+The complete hourly analysis flags four hours using the Z-score threshold of 3. These scores should not be interpreted as exact tail probabilities: hourly observations may not be independent or normally distributed, and time-of-day effects should be modelled in production.
 
 ### Isolation Forest
 
-Isolation Forest is fitted to hourly registration volume and time context only. `is_fraud` is not supplied to it. The algorithm repeatedly partitions the feature space; observations isolated in fewer splits tend to receive anomaly flags. The `contamination=0.02` argument tells the algorithm to flag an assumed 2% of observations as outliers. This is a configuration choice, not an estimate of the fraud rate. The flags are for triage, not proof of wrongdoing.
+Isolation Forest is fitted to hourly registration volume and time-context features only. `is_fraud` is not supplied to it.
+
+The model uses 300 trees and a contamination assumption of 0.02. It flags 15 hourly observations as anomalous.
+
+The algorithm repeatedly partitions the feature space; observations isolated in fewer splits tend to receive anomaly flags. The `contamination=0.02` argument is a configuration choice that influences the number of observations flagged. It is not an estimate of the actual fraud rate.
+
+The Z-score and Isolation Forest results are not expected to match exactly. Z-score identifies unusually high registration volumes relative to a global baseline, whereas Isolation Forest identifies unusual observations based on the combination of volume and time-context features.
+
+Both methods generate observations for investigation, not confirmed fraud classifications.
 
 ## C. Task 2 – preprocessing and features
 
 ### Target and class imbalance
 
-`is_fraud` is the binary target: 1 means labelled fraud and 0 means legitimate. Fraud is 5% of the supplied rows. A classifier that predicts every record as legitimate would have 95% accuracy but zero fraud recall. This is why the project reports precision, recall, F1, ROC-AUC and average precision.
+`is_fraud` is the binary target: 1 means labelled fraud and 0 means legitimate. Fraud represents 5% of the supplied rows.
+
+A classifier that predicts every record as legitimate would achieve 95% accuracy but zero fraud recall. This is why the project reports precision, recall, F1, ROC-AUC, average precision and balanced accuracy.
 
 ### Excluded columns
 
-- `user_id`: unique identifier. It is not a behavioral measurement and would not provide a defensible pattern for new users.
-- raw `registration_timestamp`: a raw datetime is not directly passed into the estimator. Its potentially useful parts are transformed into features.
+- `user_id`: unique identifier. It is not a behavioural measurement and would not provide a defensible pattern for new users.
+- Raw `registration_timestamp`: the raw datetime is not directly passed into the estimator. Its useful components are transformed into time-derived features.
 
-### Engineered features
+### Features used
 
-- hour of day and day of week;
-- weekend indicator;
-- sine and cosine encodings for hour of day, so 23:00 and 00:00 are close on the circular clock;
-- log-transformed registration duration, reducing the influence of a long right tail.
+The final modelling dataset contains 15 features before categorical encoding:
 
-The original categorical fields (email domain, gender, job title, education level, OS and device type) are one-hot encoded. Boolean fields are treated as numeric indicators.
+| Feature group | Features |
+|---|---|
+| Categorical and demographic | `email_domain`, `gender`, `job_title`, `education_level`, `os`, `device_type` |
+| Numerical and behavioural | `age`, `is_smoker`, `is_drinker`, `log_registration_duration` |
+| Time-derived | `registration_hour`, `registration_day_of_week`, `is_weekend`, `hour_sin`, `hour_cos` |
+
+Registration duration is log-transformed to reduce skewness.
+
+Hour of day is also represented using sine and cosine transformations so that times near midnight are treated as close on a cyclical clock. For example, 23:00 and 00:00 are closer in time than 23:00 and 12:00.
 
 ### Why preprocessing is inside a Pipeline
 
-The imputer, scaler and encoder are fitted on training data only. Keeping them inside the scikit-learn Pipeline prevents test-set information from influencing preprocessing. `handle_unknown='ignore'` means a category appearing only in the test or future data does not cause a transform error.
+The imputer, scaler and encoder are fitted on training data only. Keeping them inside the scikit-learn Pipeline prevents test-set information from influencing preprocessing.
+
+`handle_unknown='ignore'` means a category appearing only in the test or future data does not cause a transformation error.
+
+Numeric variables are median-imputed, categorical variables are mode-imputed and categorical features are one-hot encoded. Numeric standardization is applied for Logistic Regression.
 
 ## D. Model choices
 
@@ -77,34 +108,56 @@ The initial comparison uses class weights rather than generating synthetic minor
 
 Let TP be fraudulent users correctly flagged, FP legitimate users incorrectly flagged, FN fraudulent users missed, and TN legitimate users correctly cleared.
 
-- Precision = TP / (TP + FP). Of the users flagged, how many were fraud? Higher precision reduces investigation workload and customer friction.
-- Recall = TP / (TP + FN). Of all fraudulent users, how many were found? Higher recall reduces missed fraud.
-- F1 = harmonic mean of precision and recall. It balances the two but does not encode the actual business cost ratio.
-- ROC-AUC measures ranking quality across thresholds, but can look strong on imbalanced data.
-- Average precision summarizes the precision-recall curve and is particularly useful when the positive class is rare. Its no-skill reference is approximately the positive prevalence (5%) for this dataset.
-- Balanced accuracy averages recall for each class.
+- **Accuracy** = (TP + TN) / (TP + TN + FP + FN). It measures the overall proportion of correct predictions but can be misleading when classes are imbalanced.
+- **Precision** = TP / (TP + FP). Of the users flagged, how many were fraud? Higher precision reduces investigation workload and customer friction.
+- **Recall** = TP / (TP + FN). Of all fraudulent users, how many were found? Higher recall reduces missed fraud.
+- **F1** = harmonic mean of precision and recall. It balances the two but does not encode the actual business cost ratio.
+- **ROC-AUC** measures ranking quality across thresholds, but can look strong on imbalanced data.
+- **Average precision** summarizes the precision-recall curve and is particularly useful when the positive class is rare. Its no-skill reference is approximately the positive prevalence (5%) for this dataset.
+- **Balanced accuracy** averages recall for each class and is useful when class distribution is uneven.
 
-At the default 0.5 probability threshold, Logistic Regression achieves higher recall (0.886) but lower precision (0.366), whereas Random Forest achieves higher precision (0.727) but lower recall (0.662). Logistic Regression also achieves a higher average precision (0.774) compared with Random Forest (0.758). Therefore, Logistic Regression is selected as the best baseline model based on average precision. However, the final model choice and classification threshold should depend on the business cost of false negatives, false positives, and available fraud investigation capacity.
+### Logistic Regression test results
+
+The Logistic Regression model achieved the following results at the default probability threshold of 0.5:
+
+| Metric | Result |
+|---|---:|
+| Accuracy | 0.9174 |
+| Precision | 0.3655 |
+| Recall | 0.8860 |
+| F1-score | 0.5175 |
+| ROC-AUC | 0.9683 |
+| Average Precision | 0.7742 |
+| Balanced Accuracy | 0.9025 |
+
+Its confusion matrix is:
+
+`[[8731, 769], [57, 443]]`
+
+Rows represent actual classes (legitimate and fraud), and columns represent predicted classes (legitimate and fraud).
+
+Therefore:
+
+- True negatives: 8,731
+- False positives: 769
+- False negatives: 57
+- True positives: 443
+
+The model identifies 443 of the 500 fraud-labelled registrations in the test set, while generating 769 false-positive alerts.
+
+### Model comparison and selection
+
+At the default 0.5 probability threshold, Logistic Regression achieves higher recall (0.886) but lower precision (0.366), whereas Random Forest achieves higher precision (0.727) but lower recall (0.662).
+
+Logistic Regression also achieves higher average precision (0.774) compared with Random Forest (0.758). Therefore, Logistic Regression is selected as the best baseline model based on average precision.
+
+However, the final model choice and classification threshold should depend on the business cost of false negatives, false positives and available fraud investigation capacity. A threshold of 0.5 should not automatically be considered optimal.
+
+The model comparison demonstrates that there is a trade-off between identifying more fraudulent registrations and limiting the number of legitimate registrations incorrectly flagged for investigation.
 
 ## F. Evaluation caveat – temporal leakage / event dependence
 
 The supplied data contains a large, concentrated event on 11 January. A random stratified split distributes records from that event across training and test sets. Because event-specific signals may be learned from training examples, the test metrics may overestimate performance on a genuinely later period. The random split is reproducible and useful as a first baseline, but it is not a substitute for temporal validation. With more data, reserve the latest period as an untouched test set and train on earlier dates. Ideally validate on later months, markets or acquisition channels.
 
-## G. A concise interview explanation
-
-“I first validated the data and found that fraud represents 5% of registrations, so I avoided relying on accuracy alone. For anomaly detection, I aggregated registrations by day and hour. The highest concentration was on 11 January, with a three-hour window from 01:00 to 03:59 showing 514 fraudulent registrations out of 728. I also compared hourly volume with a baseline to establish that the event coincided with an unusually large registration spike. For a label-free setting, I demonstrated Isolation Forest on hourly activity features without using the fraud label, and discussed statistical baselines and distribution-shift monitoring.
-
-“For classification, I excluded the user identifier, engineered time features, log-transformed registration duration, and placed imputation and encoding inside scikit-learn pipelines to prevent preprocessing leakage. I compared class-weighted Logistic Regression with a balanced Random Forest using a stratified holdout. I compared precision, recall, F1, ROC-AUC and average precision. Logistic Regression gave higher recall and average precision, while Random Forest gave higher precision at the default threshold. I would choose the final threshold based on fraud-loss and review-capacity costs, and validate chronologically because the dataset contains a single concentrated incident.”
-
-## H. Questions to prepare for
-
-1. Why is accuracy misleading when fraud prevalence is 5%?
-2. What is the difference between anomaly detection and supervised classification?
-3. Why does Isolation Forest not tell us whether a user is fraudulent?
-4. Why should imputation and encoding be fitted only on training data?
-5. What is the trade-off between precision and recall in fraud operations?
-6. Why might a random split overstate future performance in this dataset?
-7. How would you select a threshold if the cost of missing fraud is much higher than the cost of manual review?
-8. What additional data (IP, session, device fingerprint, referral source, payment or verification outcomes) would help investigate a coordinated event?
-9. How would you monitor drift and model performance after deployment?
+tor drift and model performance after deployment?
 10. What privacy, fairness and human-review controls are required before acting on model scores?
