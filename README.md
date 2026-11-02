@@ -107,10 +107,3 @@ Logistic Regression uses class weights and serves as an interpretable baseline. 
 
 The random seed, split ratio, feature list, selected model and test metrics are recorded in `outputs/classification_metrics.json`. Dependencies are listed in `requirements.txt`. Re-running the scripts regenerates the analysis artefacts.
 
-## 7. Before submission
-
-1. Read the assignment PDF and compare each requirement with `reports/analysis_report.md`.
-2. Run the commands above from a clean environment.
-3. Review the generated plots and tables rather than relying only on the written summary.
-4. Be prepared to explain why accuracy is insufficient for a 5% positive class, why the identifier is excluded, how the split works, and why an anomaly is not automatically fraud.
-5. Follow the recipient's rules on assistance and disclosure. Keep a record of your own changes and be able to explain every submitted result.
