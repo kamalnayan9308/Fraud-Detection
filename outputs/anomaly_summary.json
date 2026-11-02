@@ -1,0 +1,28 @@
+{
+  "date_range": [
+    "2025-01-01 00:00:56.670990",
+    "2025-01-30 23:59:45.957599"
+  ],
+  "overall_users": 50000,
+  "overall_fraud": 2500,
+  "overall_fraud_rate": 0.05,
+  "peak_day": "2025-01-11",
+  "peak_day_registrations": 2128,
+  "peak_day_fraud": 574,
+  "peak_day_fraud_rate": 0.26973684210526316,
+  "candidate_window_start": "2025-01-11 01:00:00",
+  "candidate_window_end_exclusive": "2025-01-11 04:00:00",
+  "candidate_window_registrations": 728,
+  "candidate_window_fraud": 514,
+  "candidate_window_fraud_rate": 0.7060439560439561,
+  "baseline_hourly_volume_mean_excluding_candidate": 68.71966527196653,
+  "baseline_hourly_volume_std_excluding_candidate": 8.294058982967286,
+  "candidate_hourly_mean_volume": 242.66666666666666,
+  "candidate_hourly_z_scores": [
+    21.37437593488268,
+    21.856648849533325,
+    19.68642073360542
+  ],
+  "isolation_forest_anomaly_hours": 15,
+  "isolation_forest_contamination_assumption": 0.02
+}

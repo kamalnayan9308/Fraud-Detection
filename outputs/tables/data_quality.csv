@@ -1,0 +1,14 @@
+column,dtype,missing_count,missing_pct,unique_count
+user_id,object,0,0.0,50000
+registration_timestamp,datetime64[ns],0,0.0,50000
+email_domain,object,0,0.0,4
+age,int64,0,0.0,52
+gender,object,0,0.0,2
+job_title,object,0,0.0,5
+education_level,object,4895,9.79,4
+is_smoker,bool,0,0.0,2
+is_drinker,bool,0,0.0,2
+os,object,0,0.0,4
+device_type,object,0,0.0,2
+registration_duration_ms,float64,0,0.0,50000
+is_fraud,int64,0,0.0,2

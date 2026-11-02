@@ -1,0 +1,51 @@
+{
+  "n_rows": 50000,
+  "n_features_before_encoding": 15,
+  "fraud_rate": 0.05,
+  "train_rows": 40000,
+  "test_rows": 10000,
+  "random_state": 42,
+  "test_size": 0.2,
+  "stratified": true,
+  "features_used": [
+    "email_domain",
+    "age",
+    "gender",
+    "job_title",
+    "education_level",
+    "is_smoker",
+    "is_drinker",
+    "os",
+    "device_type",
+    "registration_hour",
+    "registration_day_of_week",
+    "is_weekend",
+    "hour_sin",
+    "hour_cos",
+    "log_registration_duration"
+  ],
+  "features_excluded": [
+    "user_id",
+    "registration_timestamp (raw)"
+  ],
+  "best_model_by_pr_auc": "logistic_regression",
+  "best_model_test_metrics": {
+    "model": "logistic_regression",
+    "precision": 0.3655115511551155,
+    "recall": 0.886,
+    "f1": 0.5175233644859814,
+    "roc_auc": 0.9683090526315791,
+    "pr_auc_average_precision": 0.7741782464697493,
+    "balanced_accuracy": 0.9025263157894736
+  },
+  "best_model_confusion_matrix": [
+    [
+      8731,
+      769
+    ],
+    [
+      57,
+      443
+    ]
+  ]
+}
