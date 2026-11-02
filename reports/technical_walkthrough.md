@@ -84,7 +84,7 @@ Let TP be fraudulent users correctly flagged, FP legitimate users incorrectly fl
 - Average precision summarizes the precision-recall curve and is particularly useful when the positive class is rare. Its no-skill reference is approximately the positive prevalence (5%) for this dataset.
 - Balanced accuracy averages recall for each class.
 
-At the default 0.5 probability threshold, Logistic Regression has higher recall (0.886) but lower precision (0.366); Random Forest has higher precision (0.728) but lower recall (0.652). The Logistic Regression average precision is 0.774 versus 0.760 for Random Forest. The report selects Logistic Regression by average precision, but an operational choice could differ depending on investigation capacity and the cost of false negatives.
+At the default 0.5 probability threshold, Logistic Regression achieves higher recall (0.886) but lower precision (0.366), whereas Random Forest achieves higher precision (0.727) but lower recall (0.662). Logistic Regression also achieves a higher average precision (0.774) compared with Random Forest (0.758). Therefore, Logistic Regression is selected as the best baseline model based on average precision. However, the final model choice and classification threshold should depend on the business cost of false negatives, false positives, and available fraud investigation capacity.
 
 ## F. Evaluation caveat – temporal leakage / event dependence
 
